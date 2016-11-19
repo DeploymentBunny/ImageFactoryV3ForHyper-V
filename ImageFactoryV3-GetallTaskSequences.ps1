@@ -9,10 +9,14 @@
    Another example of how to use this cmdlet
 #>
 
+
+
 [cmdletbinding(SupportsShouldProcess=$True)]
 
 Param(
 )
+
+BREAK
 
 Function Get-VIARefTaskSequence
 {

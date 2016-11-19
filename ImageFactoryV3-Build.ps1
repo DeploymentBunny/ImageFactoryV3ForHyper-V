@@ -96,8 +96,9 @@ Function Test-VIAHypervConnection
 
 #Inititial Settings
 Write-Verbose "Imagefactory 3.1 (Hyper-V)"
-$XMLFile = "C:\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml"
+$XMLFile = "C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml"
 Import-Module 'C:\Program Files\Microsoft Deployment Toolkit\Bin\MicrosoftDeploymentToolkit.psd1'
+Import-Module C:\Setup\PsIni\PsIni.psm1
 
 # Read Settings from XML
 Write-Verbose "Reading from $XMLFile"
@@ -129,6 +130,9 @@ Write-Verbose "Found $($RefTaskSequenceIDs.count) TaskSequences to work on"
 
 #check task sequence count
 if($RefTaskSequenceIDs.count -eq 0){Write-Warning "Sorry, could not find any TaskSequences to work with";BREAK}
+
+#Get detailed info
+Get-VIARefTaskSequence -RefTaskSequenceFolder "MDT:\Task Sequences\$($Settings.Settings.MDT.RefTaskSequenceFolderName)" | where Enabled -EQ $true
 
 #Verify Connection to Hyper-V host
 $Result = Test-VIAHypervConnection -Computername $Settings.Settings.HyperV.Computername -ISOFolder $Settings.Settings.HyperV.ISOLocation -VMFolder $Settings.Settings.HyperV.VMLocation -VMSwitchName $Settings.Settings.HyperV.SwitchName
@@ -211,6 +215,51 @@ Foreach($Ref in $RefTaskSequenceIDs){
         }
 }
 
+#Get BIOS Serialnumber from each VM and update the customsettings.ini file
+$BIOSSerialNumbers = @{}
+Foreach($Ref in $RefTaskSequenceIDs){
+
+    #Get BIOS Serailnumber from the VM
+    $BIOSSerialNumber = Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
+        Param(
+        $VMName
+        )
+        $VMObject = Get-WmiObject -Namespace root\virtualization\v2 -Class Msvm_ComputerSystem -Filter "ElementName = '$VMName'"
+        $VMObject.GetRelated('Msvm_VirtualSystemSettingData').BIOSSerialNumber
+    } -ArgumentList $Ref
+    
+    #Store serialnumber for the cleanup process
+    $BIOSSerialNumbers.Add("$Ref","$BIOSSerialNumber")
+    
+    #Update CustomSettings.ini
+
+    $IniFile = "$($Settings.settings.MDT.DeploymentShare)\Control\CustomSettings.ini"
+    $CustomSettings = Get-IniContent -FilePath $IniFile -CommentChar ";"
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "OSDComputerName=$Ref"
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "TaskSequenceID=$Ref"
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "BackupFile=$Ref.wim"
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "SkipTaskSequence=YES"
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "SkipCapture=YES"
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "SkipApplications=YES"
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "DoCapture=YES"
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+}
+
+#Read-Host -Prompt "Waiting"
+
 #Start VM's on Host
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
     Param(
@@ -260,4 +309,10 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
         Remove-VM -VM $VM -Force
         Remove-Item -Path $VM.ConfigurationLocation -Recurse -Force
     }
+}
+
+#Update CustomSettings.ini
+Foreach($Obj in $BIOSSerialNumbers.Values){
+    $CSIniUpdate = Remove-IniEntry -FilePath $IniFile -Sections $Obj
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
 }

@@ -9,10 +9,13 @@
    Another example of how to use this cmdlet
 #>
 
+
 [cmdletbinding(SupportsShouldProcess=$True)]
 
 Param(
 )
+
+BREAK
 
 Function Get-VIARefTaskSequence
 {
@@ -96,7 +99,7 @@ Function Test-VIAHypervConnection
 
 #Inititial Settings
 Write-Verbose "Imagefactory 3.1 (Hyper-V)"
-$XMLFile = "C:\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml"
+$XMLFile = "C:\Setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml"
 Import-Module 'C:\Program Files\Microsoft Deployment Toolkit\Bin\MicrosoftDeploymentToolkit.psd1'
 
 # Read Settings from XML
