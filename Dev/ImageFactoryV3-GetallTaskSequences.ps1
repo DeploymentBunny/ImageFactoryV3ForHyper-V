@@ -100,7 +100,7 @@ Function Test-VIAHypervConnection
 
 #Inititial Settings
 Write-Verbose "Imagefactory 3.1 (Hyper-V)"
-$XMLFile = "C:\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml"
+$XMLFile = "C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml"
 Import-Module 'C:\Program Files\Microsoft Deployment Toolkit\Bin\MicrosoftDeploymentToolkit.psd1'
 
 # Read Settings from XML
