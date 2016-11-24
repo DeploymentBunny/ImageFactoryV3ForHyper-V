@@ -1,12 +1,29 @@
 <#
 .Synopsis
-   Short description
+    ImageFactory 3.1
 .DESCRIPTION
-   Long description
+    ImageFactory 3.1
 .EXAMPLE
-   Example of how to use this cmdlet
-.EXAMPLE
-   Another example of how to use this cmdlet
+    ImageFactoryV3-Build.ps1
+.NOTES
+    Created:	 2016-11-24
+    Version:	 3.1
+
+    Author - Mikael Nystrom
+    Twitter: @mikael_nystrom
+    Blog   : http://deploymentbunny.com
+
+    Disclaimer:
+    This script is provided 'AS IS' with no warranties, confers no rights and 
+    is not supported by the authors or Deployment Artist.
+
+    This script uses the PsIni module:
+    Blog		: http://oliver.lipkau.net/blog/ 
+	Source		: https://github.com/lipkau/PsIni
+	http://gallery.technet.microsoft.com/scriptcenter/ea40c1ef-c856-434b-b8fb-ebd7a76e8d91
+
+.LINK
+    http://www.deploymentbunny.com
 #>
 
 [cmdletbinding(SupportsShouldProcess=$True)]
@@ -97,12 +114,12 @@ Function Test-VIAHypervConnection
 #Inititial Settings
 Write-Verbose "Imagefactory 3.1 (Hyper-V)"
 $XMLFile = "C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml"
-Import-Module 'C:\Program Files\Microsoft Deployment Toolkit\Bin\MicrosoftDeploymentToolkit.psd1'
-Import-Module C:\Setup\PsIni\PsIni.psm1
+Import-Module 'C:\Program Files\Microsoft Deployment Toolkit\Bin\MicrosoftDeploymentToolkit.psd1' -ErrorAction Stop -WarningAction Stop
+Import-Module C:\Setup\PsIni\PsIni.psm1 -ErrorAction Stop -WarningAction Stop
 
 # Read Settings from XML
 Write-Verbose "Reading from $XMLFile"
-[xml]$Settings = Get-Content $XMLFile
+[xml]$Settings = Get-Content $XMLFile -ErrorAction Stop -WarningAction Stop
 
 #Verify Connection to DeploymentRoot
 $Result = Test-Path -Path $Settings.Settings.MDT.DeploymentShare
