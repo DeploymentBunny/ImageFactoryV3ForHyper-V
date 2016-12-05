@@ -1,21 +1,36 @@
 <#
 .Synopsis
-   Short description
+    ImageFactory 3.1
 .DESCRIPTION
-   Long description
+    ImageFactory 3.1
 .EXAMPLE
-   Example of how to use this cmdlet
-.EXAMPLE
-   Another example of how to use this cmdlet
+    ImageFactoryV3-Build.ps1
+.NOTES
+    Created:	 2016-11-24
+    Version:	 3.1
+
+    Author - Mikael Nystrom
+    Twitter: @mikael_nystrom
+    Blog   : http://deploymentbunny.com
+
+    Disclaimer:
+    This script is provided 'AS IS' with no warranties, confers no rights and 
+    is not supported by the authors or Deployment Artist.
+
+    This script uses the PsIni module:
+    Blog		: http://oliver.lipkau.net/blog/ 
+	Source		: https://github.com/lipkau/PsIni
+	http://gallery.technet.microsoft.com/scriptcenter/ea40c1ef-c856-434b-b8fb-ebd7a76e8d91
+
+.LINK
+    http://www.deploymentbunny.com
 #>
-
-
 [cmdletbinding(SupportsShouldProcess=$True)]
-
 Param(
 )
 
-BREAK
+#Set start time
+$StartTime = Get-Date
 
 Function Get-VIARefTaskSequence
 {
@@ -34,7 +49,6 @@ Function Get-VIARefTaskSequence
         } 
     }
 }
-
 Function Test-VIAHypervConnection
 {
     Param(
@@ -45,30 +59,30 @@ Function Test-VIAHypervConnection
     )
     #Verify SMB access
     $Result = Test-NetConnection -ComputerName $Computername -CommonTCPPort SMB
-    If ($Result.TcpTestSucceeded -eq $true){Write-Verbose "SMB Connection to $Computername is ok"}else{Write-Warning "SMB Connection to $Computername is NOT ok";BREAK}
+    If ($Result.TcpTestSucceeded -eq $true){Write-Verbose "SMB Connection to $Computername is ok"}else{Write-Warning "SMB Connection to $Computername is NOT ok";Return $False}
 
     #Verify WinRM access
     $Result = Test-NetConnection -ComputerName $Computername -CommonTCPPort WINRM
-    If ($Result.TcpTestSucceeded -eq $true){Write-Verbose "WINRM Connection to $Computername is ok"}else{Write-Warning "WINRM Connection to $Computername is NOT ok";BREAK}
+    If ($Result.TcpTestSucceeded -eq $true){Write-Verbose "WINRM Connection to $Computername is ok"}else{Write-Warning "WINRM Connection to $Computername is NOT ok";Return $False}
 
     #Verify that Microsoft-Hyper-V-Management-PowerShell is installed
     Invoke-Command -ComputerName $Computername -ScriptBlock {
         $Result = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Management-PowerShell)
         Write-Verbose "$($Result.DisplayName) is $($Result.State)"
-        If($($Result.State) -ne "Enabled"){Write-Warning "$($Result.DisplayName) is not Enabled";BREAK}
+        If($($Result.State) -ne "Enabled"){Write-Warning "$($Result.DisplayName) is not Enabled";Return $False}
     }
 
     #Verify that Microsoft-Hyper-V-Management-PowerShell is installed
     Invoke-Command -ComputerName $Computername -ScriptBlock {
         $Result = (Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V)
-        If($($Result.State) -ne "Enabled"){Write-Warning "$($Result.DisplayName) is not Enabled";BREAK}
+        If($($Result.State) -ne "Enabled"){Write-Warning "$($Result.DisplayName) is not Enabled";Return $False}
     }
 
     #Verify that Hyper-V is running
     Invoke-Command -ComputerName $Computername -ScriptBlock {
         $Result = (Get-Service -Name vmms)
         Write-Verbose "$($Result.DisplayName) is $($Result.Status)"
-        If($($Result.Status) -ne "Running"){Write-Warning "$($Result.DisplayName) is not Running";BREAK}
+        If($($Result.Status) -ne "Running"){Write-Warning "$($Result.DisplayName) is not Running";Return $False}
     }
 
     #Verify that the ISO Folder is created
@@ -92,59 +106,131 @@ Function Test-VIAHypervConnection
         Param(
         $VMSwitchName
         )
-        if(((Get-VMSwitch | Where-Object -Property Name -EQ -Value $VMSwitchName).count) -eq "1"){Write-Verbose "Found $VMSwitchName"}else{Write-Warning "No swtch with the name $VMSwitchName found";Break}
+        if(((Get-VMSwitch | Where-Object -Property Name -EQ -Value $VMSwitchName).count) -eq "1"){Write-Verbose "Found $VMSwitchName"}else{Write-Warning "No switch with the name $VMSwitchName found";Return $False}
     } -ArgumentList $VMSwitchName
-    Return $true
+    Return $True
+}
+Function Global:Update-Log
+{
+    Param(
+    [Parameter(
+        Mandatory=$true, 
+        ValueFromPipeline=$true,
+        ValueFromPipelineByPropertyName=$true,
+        Position=0
+    )]
+    [string]$Data,
+
+    [Parameter(
+        Mandatory=$false, 
+        ValueFromPipeline=$true,
+        ValueFromPipelineByPropertyName=$true,
+        Position=0
+    )]
+    [string]$Solution = $Solution,
+
+    [Parameter(
+        Mandatory=$false, 
+        ValueFromPipeline=$true,
+        ValueFromPipelineByPropertyName=$true,
+        Position=1
+    )]
+    [validateset('Information','Warning','Error')]
+    [string]$Class = "Information"
+
+    )
+    $LogString = "$Solution, $Data, $Class, $(Get-Date)"
+    $HostString = "$Solution, $Data, $(Get-Date)"
+    
+    Add-Content -Path $Log -Value $LogString
+    switch ($Class)
+    {
+        'Information'{
+            Write-Host $HostString -ForegroundColor Gray
+            }
+        'Warning'{
+            Write-Host $HostString -ForegroundColor Yellow
+            }
+        'Error'{
+            Write-Host $HostString -ForegroundColor Red
+            }
+        Default {}
+    }
 }
 
 #Inititial Settings
-Write-Verbose "Imagefactory 3.1 (Hyper-V)"
-$XMLFile = "C:\Setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml"
-Import-Module 'C:\Program Files\Microsoft Deployment Toolkit\Bin\MicrosoftDeploymentToolkit.psd1'
+Clear-Host
+$Log = "C:\Setup\ImageFactoryV3ForHyper-V\log.txt"
+$XMLFile = "C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml"
+$Solution = "IMF32"
+Update-Log -Data "Imagefactory 3.2 (Hyper-V)"
+Update-Log -Data "Logfile is $Log"
+Update-Log -Data "XMLfile is $XMLfile"
 
-# Read Settings from XML
-Write-Verbose "Reading from $XMLFile"
-[xml]$Settings = Get-Content $XMLFile
+#Importing modules
+Update-Log -Data "Importing modules"
+Import-Module 'C:\Program Files\Microsoft Deployment Toolkit\Bin\MicrosoftDeploymentToolkit.psd1' -ErrorAction Stop -WarningAction Stop
+
+#Read Settings from XML
+Update-Log -Data "Reading from $XMLFile"
+[xml]$Settings = Get-Content $XMLFile -ErrorAction Stop -WarningAction Stop
 
 #Verify Connection to DeploymentRoot
+Update-Log -Data "Verify Connection to DeploymentRoot"
 $Result = Test-Path -Path $Settings.Settings.MDT.DeploymentShare
-If($Result -ne $true){Write-Warning "Cannot access $($Settings.Settings.MDT.DeploymentShare) , will break";break}
+If($Result -ne $true){Update-Log -Data "Cannot access $($Settings.Settings.MDT.DeploymentShare) , will break";break}
 
-#Get WIM images
-$WIMimages = Get-ChildItem -Path ($($Settings.Settings.MDT.DeploymentShare) + '\' + 'Captures') -Filter *.wim -Recurse
-Write-Verbose "Found $($WIMimages.count) WIM's to work on"
-
-#Create datafile for the wims
-$Data = foreach($WIMimage in $WIMimages){
-    $Indexs = Get-WindowsImage -ImagePath $WIMimage.FullName
-    foreach($Index in $indexs){
-        Get-WindowsImage -ImagePath $WIMimage.FullName -Index $index.ImageIndex
-        }
+#Connect to MDT
+Update-Log -Data "Connect to MDT"
+$Root = $Settings.Settings.MDT.DeploymentShare
+if((Test-Path -Path MDT:) -eq $false){
+    $MDTPSDrive = New-PSDrive -Name MDT -PSProvider MDTProvider -Root $Root -ErrorAction Stop
+    Update-Log -Data "Connected to $($MDTPSDrive.Root)"
 }
 
-$Data | Select-object * |Out-GridView
+#Get MDT Settings
+Update-Log -Data "Get MDT Settings"
+$MDTSettings = Get-ItemProperty MDT:
 
-#check task sequence count
-if($WIMimages.count -eq 0){Write-Warning "Sorry, could not find any TaskSequences to work with";BREAK}
+#Get TaskSequences
+Update-Log -Data "Get TaskSequences"
+$RefTaskSequenceIDs = (Get-VIARefTaskSequence -RefTaskSequenceFolder "MDT:\Task Sequences\$($Settings.Settings.MDT.RefTaskSequenceFolderName)" | where Enabled -EQ $true).TasksequenceID
+if($RefTaskSequenceIDs.count -eq 0){
+    Update-Log -Data "Sorry, could not find any TaskSequences to work with"
+    BREAK
+    }
+Update-Log -Data "Found $($RefTaskSequenceIDs.count) TaskSequences to work on"
+
+#Get detailed info
+Update-Log -Data "Get detailed info about the task sequences"
+$Result = Get-VIARefTaskSequence -RefTaskSequenceFolder "MDT:\Task Sequences\$($Settings.Settings.MDT.RefTaskSequenceFolderName)" | where Enabled -EQ $true
+foreach($obj in ($Result | Select-Object TaskSequenceID,Name,Version)){
+    $data = "$($obj.TaskSequenceID) $($obj.Name) $($obj.Version)"
+    Update-Log -Data $data
+}
+
+$Result | Select-Object *
+
+
+#Show the WIMfiles:
+Update-Log -Data "Show the WIM's"
+Foreach($Ref in $RefTaskSequenceIDs){
+    $FullRefPath = $(("$Root\Captures\$ref") + ".wim")
+    if((Test-Path -Path $FullRefPath) -eq $true){
+        $Item = Get-Item -Path $FullRefPath
+        Update-Log -Data "WIM: $($Item.FullName)"
+    }else{
+        Update-Log -Data "Could not find $FullRefPath, something wnet wrong" -Class Warning 
+    }
+}
 
 #Verify Connection to Hyper-V host
+Update-Log -Data "Verify Connection to Hyper-V host"
 $Result = Test-VIAHypervConnection -Computername $Settings.Settings.HyperV.Computername -ISOFolder $Settings.Settings.HyperV.ISOLocation -VMFolder $Settings.Settings.HyperV.VMLocation -VMSwitchName $Settings.Settings.HyperV.SwitchName
-If($Result -ne $true){Write-Warning "$($Settings.Settings.HyperV.Computername) is not ready, will break";break}
-
-#Create VHDx from WIM's
-foreach($WIMimage in $WIMimages){
-    $Wimdata = Get-WindowsImage -ImagePath $WIMimage.FullName -Index 1
-    #C:\ImageFactoryV3ForHyper-V\Convert-VIAWIM2VHD.ps1 -SourceFile $WIMimage.fullname -DestinationFile ($($Settings.Settings.MDT.DeploymentShare) + '\' + 'Captures' + '\' + $WIMimage + '.vhdx') -Disklayout BIOS -Index 1 -SizeInMB 80000 -Verbose
-    $filename = $WIMimage.Name + $Wimdata.EditionId + $Wimdata.InstallationType 
-    ($($Settings.Settings.MDT.DeploymentShare) + '\' + 'Captures' + '\' + $WIMimage + '.vhdx')
-    $Wimdata | select *
-}
-
-#Upload boot image to Hyper-V host
-$DestinationFolder = "\\" + $($Settings.Settings.HyperV.Computername) + "\" + $($Settings.Settings.HyperV.ISOLocation -replace ":","$")
-Copy-Item -Path $MDTImage -Destination $DestinationFolder -Force
+If($Result -ne $true){Update-Log -Data "$($Settings.Settings.HyperV.Computername) is not ready, will break";break}
 
 #Create the VM's on Host
+Update-Log -Data "Create the VM's on Host"
 Foreach($Ref in $RefTaskSequenceIDs){
     $VMName = $ref
     $VMMemory = [int]$($Settings.Settings.HyperV.StartUpRAM) * 1GB
@@ -209,26 +295,73 @@ Foreach($Ref in $RefTaskSequenceIDs){
     } -ArgumentList $VMName,$VMMemory,$VMPath,$VMBootimage,$VMVHDSize,$VMVlanID,$VMVCPU,$VMSwitch
 }
 
-#Remove old WIM files in the capture folder
-Foreach($Ref in $RefTaskSequenceIDs){
-    $FullRefPath = $(("$Root\Captures\$ref") + ".wim")
-    if((Test-Path -Path $FullRefPath) -eq $true){
-        Remove-Item -Path $FullRefPath -Force -ErrorAction Stop
-        }
-}
-
 #Start VM's on Host
+Update-Log -Data "Start VM's on Host"
+Update-Log -Data "ConcurrentRunningVMs is set to: $ConcurrentRunningVMs"
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
     Param(
-        $ConcurrentRunningVMs
+        $ConcurrentRunningVMs,
+        $MDTServer = ""
     ) 
-    #Print out settings
-    Write-Output "ConcurrentRunningVMs is set to: $ConcurrentRunningVMs"
-    
+    #Import Function
+    Function Get-MDTOData{
+    <#
+    .Synopsis
+        Function for getting MDTOdata
+    .DESCRIPTION
+        Function for getting MDTOdata
+    .EXAMPLE
+        Get-MDTOData -MDTMonitorServer MDTSERVER01
+    .NOTES
+        Created:     2016-03-07
+        Version:     1.0
+ 
+        Author - Mikael Nystrom
+        Twitter: @mikael_nystrom
+        Blog   : http://deploymentbunny.com
+ 
+    .LINK
+        http://www.deploymentbunny.com
+    #>
+    Param(
+    $MDTMonitorServer
+    ) 
+    $URL = "http://" + $MDTMonitorServer + ":9801/MDTMonitorData/Computers"
+    $Data = Invoke-RestMethod $URL
+    foreach($property in ($Data.content.properties) ){
+        $Hash =  [ordered]@{ 
+            Name = $($property.Name); 
+            PercentComplete = $($property.PercentComplete.’#text’); 
+            Warnings = $($property.Warnings.’#text’); 
+            Errors = $($property.Errors.’#text’); 
+            DeploymentStatus = $( 
+            Switch($property.DeploymentStatus.’#text’){ 
+                1 { "Active/Running"} 
+                2 { "Failed"} 
+                3 { "Successfully completed"} 
+                Default {"Unknown"} 
+                }
+            );
+            StepName = $($property.StepName);
+            TotalSteps = $($property.TotalStepS.'#text')
+            CurrentStep = $($property.CurrentStep.'#text')
+            DartIP = $($property.DartIP);
+            DartPort = $($property.DartPort);
+            DartTicket = $($property.DartTicket);
+            VMHost = $($property.VMHost.'#text');
+            VMName = $($property.VMName.'#text');
+            LastTime = $($property.LastTime.'#text') -replace "T"," ";
+            StartTime = $($property.StartTime.’#text’) -replace "T"," "; 
+            EndTime = $($property.EndTime.’#text’) -replace "T"," "; 
+            }
+        New-Object PSObject -Property $Hash
+        }
+    }
+
     #Get the VMs as Objects
     $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE"
     foreach($RefVM in $RefVMs){
-        Write-Verbose "REFVM $($RefVM.Name) is allocated to $($RefVM.ComputerName) at $($refvm.ConfigurationLocation)"
+        Write-Verbose "REFVM $($RefVM.Name) is deployed on $($RefVM.ComputerName) at $($refvm.ConfigurationLocation)"
     }
 
     #Get the VMs as Objects
@@ -239,25 +372,96 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
     Do
         {
             $RunningVMs = $((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running))
-            Write-Output "Currently running VM's : $($RunningVMs.Name) at $(Get-Date)"
+            foreach($RunningVM in $RunningVMs){
+                if($MDTServer -eq ""){
+                    Write-Output "Currently running VM's : $($RunningVMs.Name) at $(Get-Date)"
+                }
+                else{
+                    Get-MDTOData -MDTMonitorServer $MDTServer | Where-Object -Property Name -EQ -Value $RunningVM.Name | Select-Object Name,PercentComplete,Warnings,Errors,DeploymentStatus,StartTime,Lasttime | FT
+                }
+            }
             Start-Sleep -Seconds "30"
-        
         }
     While((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running).Count -gt ($ConcurrentRunningVMs - 1))
     }
-} -ArgumentList $($Settings.Settings.ConcurrentRunningVMs)
+} -ArgumentList $($Settings.Settings.ConcurrentRunningVMs),$env:COMPUTERNAME
 
 #Wait until they are done
+Update-Log -Data "Wait until they are done"
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
+    Param(
+    $MDTServer = ""
+    )
+    #Import Function
+    Function Get-MDTOData{
+    <#
+    .Synopsis
+        Function for getting MDTOdata
+    .DESCRIPTION
+        Function for getting MDTOdata
+    .EXAMPLE
+        Get-MDTOData -MDTMonitorServer MDTSERVER01
+    .NOTES
+        Created:     2016-03-07
+        Version:     1.0
+ 
+        Author - Mikael Nystrom
+        Twitter: @mikael_nystrom
+        Blog   : http://deploymentbunny.com
+ 
+    .LINK
+        http://www.deploymentbunny.com
+    #>
+    Param(
+    $MDTMonitorServer
+    ) 
+    $URL = "http://" + $MDTMonitorServer + ":9801/MDTMonitorData/Computers"
+    $Data = Invoke-RestMethod $URL
+    foreach($property in ($Data.content.properties) ){
+        $Hash =  [ordered]@{ 
+            Name = $($property.Name); 
+            PercentComplete = $($property.PercentComplete.’#text’); 
+            Warnings = $($property.Warnings.’#text’); 
+            Errors = $($property.Errors.’#text’); 
+            DeploymentStatus = $( 
+            Switch($property.DeploymentStatus.’#text’){ 
+                1 { "Active/Running"} 
+                2 { "Failed"} 
+                3 { "Successfully completed"} 
+                Default {"Unknown"} 
+                }
+            );
+            StepName = $($property.StepName);
+            TotalSteps = $($property.TotalStepS.'#text')
+            CurrentStep = $($property.CurrentStep.'#text')
+            DartIP = $($property.DartIP);
+            DartPort = $($property.DartPort);
+            DartTicket = $($property.DartTicket);
+            VMHost = $($property.VMHost.'#text');
+            VMName = $($property.VMName.'#text');
+            LastTime = $($property.LastTime.'#text') -replace "T"," ";
+            StartTime = $($property.StartTime.’#text’) -replace "T"," "; 
+            EndTime = $($property.EndTime.’#text’) -replace "T"," "; 
+            }
+        New-Object PSObject -Property $Hash
+        }
+    }
     Do{
         $RunningVMs = $((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running))
-        Write-Output "Currently running VM's : $($RunningVMs.name) at $(Get-Date)"
-        Start-Sleep -Seconds "30"
-        
+            foreach($RunningVM in $RunningVMs){
+                if($MDTServer -eq ""){
+                    Write-Output "Currently running VM's : $($RunningVMs.Name) at $(Get-Date)"
+                }
+                else{
+                    Get-MDTOData -MDTMonitorServer $MDTServer | Where-Object -Property Name -EQ -Value $RunningVM.Name | Select-Object Name,PercentComplete,Warnings,Errors,DeploymentStatus,StartTime,Lasttime | FT
+                }
+            }
+            Start-Sleep -Seconds "30"
     }until((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running).count -eq '0')
-}
+} -ArgumentList $MDTServer
 
 #Cleanup VMs
+Update-Log -Data "Cleanup VMs"
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
     $RefVMs = Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" 
     Foreach($RefVM in $RefVMs){
@@ -267,3 +471,19 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
         Remove-Item -Path $VM.ConfigurationLocation -Recurse -Force
     }
 }
+
+#Cleanup MDT Monitoring data
+Update-Log -Data "Cleanup MDT Monitoring data"
+if($EnableMDTMonitoring -eq $True){
+    foreach($RefTaskSequenceID in $RefTaskSequenceIDs){
+        Get-MDTMonitorData -Path MDT: | Where-Object -Property Name -EQ -Value $RefTaskSequenceID | Remove-MDTMonitorData -Path MDT:
+    }
+}
+
+
+
+#Final update
+$Endtime = Get-Date
+Update-Log -Data "The script took $(($Endtime - $StartTime).Days):Days $(($Endtime - $StartTime).Hours):Hours $(($Endtime - $StartTime).Minutes):Minutes to complete."
+
+

@@ -1,15 +1,15 @@
 ﻿<Settings>
   <ConcurrentRunningVMs>2</ConcurrentRunningVMs>
  <MDT>
-  <DeploymentShare>E:\MDTBuildLab</DeploymentShare>
+  <DeploymentShare>D:\MDTBuildLab</DeploymentShare>
   <RefTaskSequenceFolderName>REF</RefTaskSequenceFolderName>
  </MDT>
  <HyperV>
   <ConcurrentRunningVMs>2</ConcurrentRunningVMs>
   <StartUpRAM>4</StartUpRAM>
   <VLANID>0</VLANID>
-  <Computername>PUTTEII</Computername>
-  <SwitchName>UplinkSwitch</SwitchName>
+  <Computername>DEMOHOST03</Computername>
+  <SwitchName>ViaMonstraNAT</SwitchName>
   <VMLocation>D:\VMs</VMLocation>
   <ISOLocation>C:\ISO</ISOLocation>
   <VHDSize>80</VHDSize>
