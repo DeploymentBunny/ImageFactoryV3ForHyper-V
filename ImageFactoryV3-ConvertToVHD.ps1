@@ -2,10 +2,22 @@
 Import-Module C:\setup\Functions\VIADeployModule.psm1 -Force
 Import-Module C:\Setup\Functions\VIAUtilityModule.psm1 -Force
 
-$RefTS = "REFWS2012R2-003"
-$WIMfile = "D:\MDTBuildLab\Captures\$RefTS.wim"
-$VHDImage = "C:\test\$RefTS.vhdx"
-C:\Setup\HYDv10\Scripts\Convert-VIAWIM2VHD.ps1 -SourceFile $WIMfile -DestinationFile $VHDImage -Disklayout UEFI -SizeInMB 40000 -Index 1
+$wims = Get-ChildItem -Path D:\MDTBuildLab\Captures -Filter *.wim
+foreach($wim in $wims){
+    $Sourcefile = $wim.FullName
+    $DestinationFile = $($wim.FullName | Split-Path) +"\" + $wim.BaseName + "_UEFI.vhdx"
+    C:\Setup\HYDv10\Scripts\Convert-VIAWIM2VHD.ps1 -SourceFile $SourceFile -DestinationFile $DestinationFile -Disklayout UEFI -SizeInMB 80000 -Index 1
+}
+
+$wims = Get-ChildItem -Path D:\MDTBuildLab\Captures -Filter *.wim
+foreach($wim in $wims){
+    $Sourcefile = $wim.FullName
+    $DestinationFile = $($wim.FullName | Split-Path) +"\" + $wim.BaseName + "_BIOS.vhdx"
+    C:\Setup\HYDv10\Scripts\Convert-VIAWIM2VHD.ps1 -SourceFile $SourceFile -DestinationFile $DestinationFile -Disklayout BIOS -SizeInMB 80000 -Index 1
+}
+
+
+BREAK
 
 $MountFolder = "C:\MountVHD"
 $AdminPassword = "P@ssw0rd"
