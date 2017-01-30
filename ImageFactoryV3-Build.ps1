@@ -121,7 +121,7 @@ Function Test-VIAHypervConnection
     } -ArgumentList $VMSwitchName
     Return $True
 }
-Function Global:Update-Log
+Function Update-Log
 {
     Param(
     [Parameter(
