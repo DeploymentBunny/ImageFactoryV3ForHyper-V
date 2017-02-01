@@ -226,7 +226,7 @@ If($EnableMDTMonitoring -eq $True){
 #Verify access to boot image
 Update-Log -Data "Verify access to boot image"
 $MDTImage = $($Settings.Settings.MDT.DeploymentShare) + "\boot\" + $($MDTSettings.'Boot.x86.LiteTouchISOName')
-if((Test-Path -Path $MDTImage) -eq $true){Update-Log -Data "Access to $MDTImage is ok"}
+if((Test-Path -Path $MDTImage) -eq $true){Update-Log -Data "Access to $MDTImage is ok"}else{Write-Warning "Could not access $MDTImage";BREAK}
 
 #Get TaskSequences
 Update-Log -Data "Get TaskSequences"
