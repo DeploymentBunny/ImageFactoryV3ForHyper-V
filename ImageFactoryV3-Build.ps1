@@ -295,6 +295,10 @@ Foreach($Ref in $RefTaskSequenceIDs){
     $VM = New-VM -Name $VMName -MemoryStartupBytes $VMMemory -Path $VMPath -NoVHD -Generation 1
     Write-Verbose "$($VM.Name) is created"
 
+    #Disable dynamic memory 
+    Set-VMMemory -VM $VM -DynamicMemoryEnabled $false
+    Write-Verbose "Dynamic memory is disabled on $($VM.Name)"
+
     #Connect to VMSwitch 
     Connect-VMNetworkAdapter -VMNetworkAdapter (Get-VMNetworkAdapter -VM $VM) -SwitchName $VMSwitch
     Write-Verbose "$($VM.Name) is connected to $VMSwitch"
