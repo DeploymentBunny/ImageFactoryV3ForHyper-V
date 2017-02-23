@@ -1,13 +1,17 @@
 <#
 .Synopsis
-    ImageFactory 3.1
+    ImageFactory 3.2
 .DESCRIPTION
-    ImageFactory 3.1
+    ImageFactory 3.2
 .EXAMPLE
     ImageFactoryV3-Build.ps1
 .NOTES
     Created:	 2016-11-24
     Version:	 3.1
+
+    Updated:	 2017-02-23
+    Version:	 3.2
+
 
     Author - Mikael Nystrom
     Twitter: @mikael_nystrom
@@ -15,7 +19,7 @@
 
     Disclaimer:
     This script is provided 'AS IS' with no warranties, confers no rights and 
-    is not supported by the authors or Deployment Artist.
+    is not supported by the author.
 
     This script uses the PsIni module:
     Blog		: http://oliver.lipkau.net/blog/ 
