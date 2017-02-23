@@ -394,7 +394,8 @@ Update-Log -Data "ConcurrentRunningVMs is set to: $($Settings.Settings.Concurren
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
     Param(
         $ConcurrentRunningVMs,
-        $MDTServer = ""
+        $MDTServer = "",
+        $EnableMDTMonitoring
     ) 
     #Import Function
     Function Get-MDTOData{
@@ -466,7 +467,7 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
         {
             $RunningVMs = $((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running))
             foreach($RunningVM in $RunningVMs){
-                if($MDTServer -eq ""){
+                if($EnableMDTMonitoring -eq $false){
                     Write-Output "Currently running VM's : $($RunningVMs.Name) at $(Get-Date)"
                 }
                 else{
@@ -477,13 +478,14 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
         }
     While((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running).Count -gt ($ConcurrentRunningVMs - 1))
     }
-} -ArgumentList $($Settings.Settings.ConcurrentRunningVMs),$env:COMPUTERNAME
+} -ArgumentList $($Settings.Settings.ConcurrentRunningVMs),$env:COMPUTERNAME,$EnableMDTMonitoring
 
 #Wait until they are done
 Update-Log -Data "Wait until they are done"
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
     Param(
-    $MDTServer = ""
+    $MDTServer = "",
+    $EnableMDTMonitoring
     )
     #Import Function
     Function Get-MDTOData{
@@ -542,7 +544,7 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
     Do{
         $RunningVMs = $((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running))
             foreach($RunningVM in $RunningVMs){
-                if($MDTServer -eq ""){
+                if($EnableMDTMonitoring -eq $false){
                     Write-Output "Currently running VM's : $($RunningVMs.Name) at $(Get-Date)"
                 }
                 else{
@@ -551,10 +553,10 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
             }
             Start-Sleep -Seconds "30"
     }until((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running).count -eq '0')
-} -ArgumentList $MDTServer
+} -ArgumentList $MDTServer,$EnableMDTMonitoring
 
 if($TestMode -eq $True){
-    Read-Host -Prompt "Press any key when testing is done, the VM's will be deleted..."
+    #Read-Host -Prompt "Press any key when testing is done, the VM's will be deleted..."
 }
 
 #Cleanup VMs
