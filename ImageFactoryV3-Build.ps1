@@ -360,30 +360,30 @@ Foreach($Ref in $RefTaskSequenceIDs){
     $IniFile = "$($Settings.settings.MDT.DeploymentShare)\Control\CustomSettings.ini"
     $CustomSettings = Get-IniContent -FilePath $IniFile -CommentChar ";"
 
-    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "OSDComputerName=$Ref"
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"OSDComputerName"="$Ref"}
     Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
 
-    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "TaskSequenceID=$Ref"
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"TaskSequenceID"="$Ref"}
     Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
 
-    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "BackupFile=$Ref.wim"
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"BackupFile"="$Ref.wim"}
     Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
 
-    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "SkipTaskSequence=YES"
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"SkipTaskSequence"="YES"}
     Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
 
-    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "SkipApplications=YES"
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"SkipApplications"="YES"}
     Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
 
-    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "SkipCapture=YES"
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"SkipCapture"="YES"}
     Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
 
     if($TestMode -eq $True){
-        $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "DoCapture=NO"
+        $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"DoCapture"="NO"}
         Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
     }
     else{
-        $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs "DoCapture=YES"
+        $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"DoCapture"="YES"}
         Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
     }
 }
