@@ -60,3 +60,84 @@ IMF32, Cleanup MDT Monitoring data, Information, 02/23/2017 14:37:25
 IMF32, Show the WIM's, Information, 02/23/2017 14:37:25
 IMF32, Could not find D:\MDTBuildLab\Captures\REFWS2016-003.wim, something went wrong, sorry, Warning, 02/23/2017 14:37:25
 IMF32, The script took 0:Days 0:Hours 2:Minutes to complete., Information, 02/23/2017 14:37:25
+IMF32, Imagefactory 3.2 (Hyper-V), Information, 03/06/2017 12:50:40
+IMF32, Logfile is C:\Setup\ImageFactoryV3ForHyper-V\log.txt, Information, 03/06/2017 12:50:40
+IMF32, XMLfile is C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml, Information, 03/06/2017 12:50:40
+IMF32, Importing modules, Information, 03/06/2017 12:50:40
+IMF32, Reading from C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml, Information, 03/06/2017 12:50:40
+IMF32, Verify Connection to DeploymentRoot, Information, 03/06/2017 12:50:40
+IMF32, Connect to MDT, Information, 03/06/2017 12:50:40
+IMF32, Connected to D:\MDTBuildLab, Information, 03/06/2017 12:50:40
+IMF32, Get MDT Settings, Information, 03/06/2017 12:50:55
+IMF32, Check if we should update the boot image, Information, 03/06/2017 12:50:55
+IMF32, Check if we should use MDTmonitoring, Information, 03/06/2017 12:50:55
+IMF32, Verify access to boot image, Information, 03/06/2017 12:50:55
+IMF32, Access to D:\MDTBuildLab\boot\MDT Build Lab x86.iso is ok, Information, 03/06/2017 12:50:55
+IMF32, Get TaskSequences, Information, 03/06/2017 12:50:55
+IMF32, Found 1 TaskSequences to work on, Information, 03/06/2017 12:50:55
+IMF32, Get detailed info about the task sequences, Information, 03/06/2017 12:51:05
+IMF32, REFWS2016-003 Ref Windows Server 2016 x64 Standard - 10.0.14393.0 1.0, Information, 03/06/2017 12:51:05
+IMF32, Verify Connection to Hyper-V host, Information, 03/06/2017 12:51:11
+IMF32, Upload boot image to Hyper-V host, Information, 03/06/2017 12:51:23
+IMF32, Remove old WIM files in the capture folder, Information, 03/06/2017 12:51:57
+IMF32, Create the VM's on Host, Information, 03/06/2017 12:52:13
+IMF32, Get BIOS Serialnumber from each VM and update the customsettings.ini file, Information, 03/06/2017 12:52:25
+IMF32, Get BIOS Serialnumber from each VM and update the customsettings.ini file, Information, 03/06/2017 12:53:04
+IMF32, Importing modules, Information, 03/06/2017 12:53:21
+IMF32, Imagefactory 3.2 (Hyper-V), Information, 03/06/2017 12:55:01
+IMF32, Logfile is C:\Setup\ImageFactoryV3ForHyper-V\log.txt, Information, 03/06/2017 12:55:01
+IMF32, XMLfile is C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml, Information, 03/06/2017 12:55:01
+IMF32, Importing modules, Information, 03/06/2017 12:55:01
+IMF32, Reading from C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml, Information, 03/06/2017 12:55:01
+IMF32, Verify Connection to DeploymentRoot, Information, 03/06/2017 12:55:01
+IMF32, Connect to MDT, Information, 03/06/2017 12:55:01
+IMF32, Get MDT Settings, Information, 03/06/2017 12:55:01
+IMF32, Check if we should update the boot image, Information, 03/06/2017 12:55:01
+IMF32, Check if we should use MDTmonitoring, Information, 03/06/2017 12:55:01
+IMF32, Verify access to boot image, Information, 03/06/2017 12:55:01
+IMF32, Access to D:\MDTBuildLab\boot\MDT Build Lab x86.iso is ok, Information, 03/06/2017 12:55:01
+IMF32, Get TaskSequences, Information, 03/06/2017 12:55:01
+IMF32, Found 1 TaskSequences to work on, Information, 03/06/2017 12:55:01
+IMF32, Get detailed info about the task sequences, Information, 03/06/2017 12:55:01
+IMF32, REFWS2016-003 Ref Windows Server 2016 x64 Standard - 10.0.14393.0 1.0, Information, 03/06/2017 12:55:01
+IMF32, Verify Connection to Hyper-V host, Information, 03/06/2017 12:55:01
+IMF32, Upload boot image to Hyper-V host, Information, 03/06/2017 12:55:10
+IMF32, Remove old WIM files in the capture folder, Information, 03/06/2017 12:55:11
+IMF32, Create the VM's on Host, Information, 03/06/2017 12:55:16
+IMF32, Get BIOS Serialnumber from each VM and update the customsettings.ini file, Information, 03/06/2017 12:55:24
+IMF32, Cleanup VMs, Information, 03/06/2017 12:55:40
+IMF32, Update CustomSettings.ini, Information, 03/06/2017 12:55:54
+IMF32, Cleanup MDT Monitoring data, Information, 03/06/2017 12:56:02
+IMF32, Show the WIM's, Information, 03/06/2017 12:56:07
+IMF32, Could not find D:\MDTBuildLab\Captures\REFWS2016-003.wim, something went wrong, sorry, Warning, 03/06/2017 12:56:07
+IMF32, The script took 0:Days 0:Hours 1:Minutes to complete., Information, 03/06/2017 12:56:07
+IMF32, Imagefactory 3.2 (Hyper-V), Information, 03/06/2017 13:42:11
+IMF32, Logfile is C:\Setup\ImageFactoryV3ForHyper-V\log.txt, Information, 03/06/2017 13:42:11
+IMF32, XMLfile is C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml, Information, 03/06/2017 13:42:11
+IMF32, Importing modules, Information, 03/06/2017 13:42:11
+IMF32, Reading from C:\setup\ImageFactoryV3ForHyper-V\ImageFactoryV3.xml, Information, 03/06/2017 13:42:11
+IMF32, Verify Connection to DeploymentRoot, Information, 03/06/2017 13:42:11
+IMF32, Connect to MDT, Information, 03/06/2017 13:42:11
+IMF32, Get MDT Settings, Information, 03/06/2017 13:42:11
+IMF32, Check if we should update the boot image, Information, 03/06/2017 13:42:11
+IMF32, Check if we should use MDTmonitoring, Information, 03/06/2017 13:42:11
+IMF32, Verify access to boot image, Information, 03/06/2017 13:42:11
+IMF32, Access to D:\MDTBuildLab\boot\MDT Build Lab x86.iso is ok, Information, 03/06/2017 13:42:11
+IMF32, Get TaskSequences, Information, 03/06/2017 13:42:11
+IMF32, Found 1 TaskSequences to work on, Information, 03/06/2017 13:42:11
+IMF32, Get detailed info about the task sequences, Information, 03/06/2017 13:42:11
+IMF32, REFWS2016-003 Ref Windows Server 2016 x64 Standard - 10.0.14393.0 1.0, Information, 03/06/2017 13:42:11
+IMF32, Verify Connection to Hyper-V host, Information, 03/06/2017 13:42:11
+IMF32, Upload boot image to Hyper-V host, Information, 03/06/2017 13:42:20
+IMF32, Remove old WIM files in the capture folder, Information, 03/06/2017 13:42:21
+IMF32, Create the VM's on Host, Information, 03/06/2017 13:42:21
+IMF32, Get BIOS Serialnumber from each VM and update the customsettings.ini file, Information, 03/06/2017 13:42:28
+IMF32, Start VM's on Host, Information, 03/06/2017 13:42:29
+IMF32, ConcurrentRunningVMs is set to: 2, Information, 03/06/2017 13:42:29
+IMF32, Wait until they are done, Information, 03/06/2017 13:43:05
+IMF32, Cleanup VMs, Information, 03/06/2017 14:58:25
+IMF32, Update CustomSettings.ini, Information, 03/06/2017 14:58:29
+IMF32, Cleanup MDT Monitoring data, Information, 03/06/2017 14:58:29
+IMF32, Show the WIM's, Information, 03/06/2017 14:58:29
+IMF32, WIM: D:\MDTBuildLab\Captures\REFWS2016-003.wim, Information, 03/06/2017 14:58:29
+IMF32, The script took 0:Days 1:Hours 16:Minutes to complete., Information, 03/06/2017 14:58:29
