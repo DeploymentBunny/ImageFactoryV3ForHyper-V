@@ -1,8 +1,8 @@
 <#
 .Synopsis
-    ImageFactory 3.2
+    ImageFactory 3.3
 .DESCRIPTION
-    ImageFactory 3.2
+    ImageFactory 3.3
 .EXAMPLE
     ImageFactoryV3-Build.ps1
 .NOTES
@@ -11,6 +11,9 @@
 
     Updated:	 2017-02-23
     Version:	 3.2
+
+    Updated:    2017-09-14
+    Version:    3.3
 
 
     Author - Mikael Nystrom
@@ -41,7 +44,11 @@ Param(
 
     [parameter(mandatory=$false)] 
     [ValidateSet($True,$False)] 
-    $TestMode = $False
+    $TestMode = $False,
+
+    [parameter(mandatory=$false)] 
+    [ValidateSet(1,2)] 
+    [int]$VMGen = 2
 )
 
 #Set start time
@@ -229,7 +236,11 @@ If($EnableMDTMonitoring -eq $True){
 
 #Verify access to boot image
 Update-Log -Data "Verify access to boot image"
-$MDTImage = $($Settings.Settings.MDT.DeploymentShare) + "\boot\" + $($MDTSettings.'Boot.x86.LiteTouchISOName')
+switch ($VMGen)
+{
+    1{$MDTImage = $($Settings.Settings.MDT.DeploymentShare) + "\boot\" + $($MDTSettings.'Boot.x86.LiteTouchISOName')}
+    2{$MDTImage = $($Settings.Settings.MDT.DeploymentShare) + "\boot\" + $($MDTSettings.'Boot.x64.LiteTouchISOName')}
+}
 if((Test-Path -Path $MDTImage) -eq $true){Update-Log -Data "Access to $MDTImage is ok"}else{Write-Warning "Could not access $MDTImage";BREAK}
 
 #Get TaskSequences
@@ -288,7 +299,8 @@ Foreach($Ref in $RefTaskSequenceIDs){
         $VMVHDSize,
         $VMVlanID,
         $VMVCPU,
-        $VMSwitch
+        $VMSwitch,
+        $VMGen
     )        
     Write-Verbose "Hyper-V host is $env:COMPUTERNAME"
     Write-Verbose "Working on $VMName"
@@ -296,7 +308,7 @@ Foreach($Ref in $RefTaskSequenceIDs){
     if(!((Get-VM | Where-Object -Property Name -EQ -Value $VMName).count -eq 0)){Write-Warning -Message "VM exist";Break}
 
     #Create VM 
-    $VM = New-VM -Name $VMName -MemoryStartupBytes $VMMemory -Path $VMPath -NoVHD -Generation 1
+    $VM = New-VM -Name $VMName -MemoryStartupBytes $VMMemory -Path $VMPath -NoVHD -Generation $VMGen
     Write-Verbose "$($VM.Name) is created"
 
     #Disable dynamic memory 
@@ -328,14 +340,29 @@ Foreach($Ref in $RefTaskSequenceIDs){
     $result = Add-VMHardDiskDrive -VMName $VMName -Path "$VMPath\$VMName\Virtual Hard Disks\$VHD" -Passthru
     Write-Verbose "$($result.Path) is attached to $VMName"
     
-    #Connect ISO 
-    $result = Set-VMDvdDrive -VMName $VMName -Path $VMBootimage -Passthru
-    Write-Verbose "$($result.Path) is attached to $VMName"
+    switch ($VMGen)
+    {
+        1 {    
+            #Connect ISO 
+            $result = Set-VMDvdDrive -VMName $VMName -Path $VMBootimage -Passthru
+            Write-Verbose "$($result.Path) is attached to $VMName"
+        }
 
+        2 {
+            #Connect ISO
+            $result = Add-VMDvdDrive -VMName $VMName -Path $VMBootimage
+            Write-Verbose "$($result.Path) is attached to $VMName"        
+            
+            #Disable Secure Boot
+            Set-VMFirmware -VMName $VM.Name -EnableSecureBoot Off
+            Write-Verbose "Secure Boot is disabled on VM $VMName"
+        }
+    }
+    
     #Set Notes
     Set-VM -VMName $VMName -Notes "REFIMAGE"
 
-    } -ArgumentList $VMName,$VMMemory,$VMPath,$VMBootimage,$VMVHDSize,$VMVlanID,$VMVCPU,$VMSwitch
+    } -ArgumentList $VMName,$VMMemory,$VMPath,$VMBootimage,$VMVHDSize,$VMVlanID,$VMVCPU,$VMSwitch,$VMGen
 }
 
 #Get BIOS Serialnumber from each VM and update the customsettings.ini file
@@ -425,11 +452,11 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
     foreach($property in ($Data.content.properties) ){
         $Hash =  [ordered]@{ 
             Name = $($property.Name); 
-            PercentComplete = $($property.PercentComplete.’#text’); 
-            Warnings = $($property.Warnings.’#text’); 
-            Errors = $($property.Errors.’#text’); 
+            PercentComplete = $($property.PercentComplete.'#text'); 
+            Warnings = $($property.Warnings.'#text'); 
+            Errors = $($property.Errors.'#text'); 
             DeploymentStatus = $( 
-            Switch($property.DeploymentStatus.’#text’){ 
+            Switch($property.DeploymentStatus.'#text'){ 
                 1 { "Active/Running"} 
                 2 { "Failed"} 
                 3 { "Successfully completed"} 
@@ -445,8 +472,8 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
             VMHost = $($property.VMHost.'#text');
             VMName = $($property.VMName.'#text');
             LastTime = $($property.LastTime.'#text') -replace "T"," ";
-            StartTime = $($property.StartTime.’#text’) -replace "T"," "; 
-            EndTime = $($property.EndTime.’#text’) -replace "T"," "; 
+            StartTime = $($property.StartTime.'#text') -replace "T"," "; 
+            EndTime = $($property.EndTime.'#text') -replace "T"," "; 
             }
         New-Object PSObject -Property $Hash
         }
@@ -515,11 +542,11 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
     foreach($property in ($Data.content.properties) ){
         $Hash =  [ordered]@{ 
             Name = $($property.Name); 
-            PercentComplete = $($property.PercentComplete.’#text’); 
-            Warnings = $($property.Warnings.’#text’); 
-            Errors = $($property.Errors.’#text’); 
+            PercentComplete = $($property.PercentComplete.'#text'); 
+            Warnings = $($property.Warnings.'#text'); 
+            Errors = $($property.Errors.'#text'); 
             DeploymentStatus = $( 
-            Switch($property.DeploymentStatus.’#text’){ 
+            Switch($property.DeploymentStatus.'#text'){ 
                 1 { "Active/Running"} 
                 2 { "Failed"} 
                 3 { "Successfully completed"} 
@@ -535,8 +562,8 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
             VMHost = $($property.VMHost.'#text');
             VMName = $($property.VMName.'#text');
             LastTime = $($property.LastTime.'#text') -replace "T"," ";
-            StartTime = $($property.StartTime.’#text’) -replace "T"," "; 
-            EndTime = $($property.EndTime.’#text’) -replace "T"," "; 
+            StartTime = $($property.StartTime.'#text') -replace "T"," "; 
+            EndTime = $($property.EndTime.'#text') -replace "T"," "; 
             }
         New-Object PSObject -Property $Hash
         }
@@ -586,8 +613,8 @@ if($EnableMDTMonitoring -eq $True){
     }
 }
 
+#Show the WIM files
 if(!($TestMode -eq $True)){
-    #Show the WIMfiles:
     Update-Log -Data "Show the WIM's"
     Foreach($Ref in $RefTaskSequenceIDs){
         $FullRefPath = $(("$Root\Captures\$ref") + ".wim")
