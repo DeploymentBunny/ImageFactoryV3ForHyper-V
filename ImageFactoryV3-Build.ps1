@@ -37,11 +37,7 @@ Param(
 
     [parameter(mandatory=$false)] 
     [ValidateSet($True,$False)] 
-    $EnableMDTMonitoring = $False,
-
-    [parameter(mandatory=$false)] 
-    [ValidateSet($True,$False)] 
-    $TestMode = $False
+    $EnableMDTMonitoring = $True
 )
 
 #Set start time
@@ -453,19 +449,19 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
     }
 
     #Get the VMs as Objects
-    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE"
+    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*"
     foreach($RefVM in $RefVMs){
         Write-Verbose "REFVM $($RefVM.Name) is deployed on $($RefVM.ComputerName) at $($refvm.ConfigurationLocation)"
     }
 
     #Get the VMs as Objects
-    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE"
+    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*"
     foreach($RefVM in $RefVMs){
     $StartedVM = Start-VM -VMName $RefVM.Name
     Write-Verbose "Starting $($StartedVM.name)"
     Do
         {
-            $RunningVMs = $((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running))
+            $RunningVMs = $((Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" | Where-Object -Property State -EQ -Value Running))
             foreach($RunningVM in $RunningVMs){
                 if($EnableMDTMonitoring -eq $false){
                     Write-Output "Currently running VM's : $($RunningVMs.Name) at $(Get-Date)"
@@ -476,7 +472,7 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
             }
             Start-Sleep -Seconds "30"
         }
-    While((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running).Count -gt ($ConcurrentRunningVMs - 1))
+    While((Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" | Where-Object -Property State -EQ -Value Running).Count -gt ($ConcurrentRunningVMs - 1))
     }
 } -ArgumentList $($Settings.Settings.ConcurrentRunningVMs),$env:COMPUTERNAME,$EnableMDTMonitoring
 
@@ -542,7 +538,7 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
         }
     }
     Do{
-        $RunningVMs = $((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running))
+        $RunningVMs = $((Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" | Where-Object -Property State -EQ -Value Running))
             foreach($RunningVM in $RunningVMs){
                 if($EnableMDTMonitoring -eq $false){
                     Write-Output "Currently running VM's : $($RunningVMs.Name) at $(Get-Date)"
@@ -552,7 +548,7 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
                 }
             }
             Start-Sleep -Seconds "30"
-    }until((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running).count -eq '0')
+    }until((Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" | Where-Object -Property State -EQ -Value Running).count -eq '0')
 } -ArgumentList $MDTServer,$EnableMDTMonitoring
 
 if($TestMode -eq $True){
@@ -562,7 +558,7 @@ if($TestMode -eq $True){
 #Cleanup VMs
 Update-Log -Data "Cleanup VMs"
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
-    $RefVMs = Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" 
+    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" 
     Foreach($RefVM in $RefVMs){
         $VM = Get-VM -VMName $RefVM.Name
         Write-Verbose "Deleting $($VM.Name) on $($VM.Computername) at $($VM.ConfigurationLocation)"
@@ -583,20 +579,6 @@ Update-Log -Data "Cleanup MDT Monitoring data"
 if($EnableMDTMonitoring -eq $True){
     foreach($RefTaskSequenceID in $RefTaskSequenceIDs){
         Get-MDTMonitorData -Path MDT: | Where-Object -Property Name -EQ -Value $RefTaskSequenceID | Remove-MDTMonitorData -Path MDT:
-    }
-}
-
-if(!($TestMode -eq $True)){
-    #Show the WIMfiles:
-    Update-Log -Data "Show the WIM's"
-    Foreach($Ref in $RefTaskSequenceIDs){
-        $FullRefPath = $(("$Root\Captures\$ref") + ".wim")
-        if((Test-Path -Path $FullRefPath) -eq $true){
-            $Item = Get-Item -Path $FullRefPath
-            Update-Log -Data "WIM: $($Item.FullName)"
-        }else{
-            Update-Log -Data "Could not find $FullRefPath, something went wrong, sorry" -Class Warning 
-        }
     }
 }
 

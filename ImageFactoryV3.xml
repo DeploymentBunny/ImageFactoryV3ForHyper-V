@@ -1,8 +1,10 @@
 ﻿<Settings>
-  <ConcurrentRunningVMs>2</ConcurrentRunningVMs>
+  <ConcurrentRunningVMs>3</ConcurrentRunningVMs>
  <MDT>
   <DeploymentShare>D:\MDTBuildLab</DeploymentShare>
   <RefTaskSequenceFolderName>REF</RefTaskSequenceFolderName>
+  <ValidateTaskSequenceFolderName>Validate</ValidateTaskSequenceFolderName>
+  <ValidateOSImageFolderName>Validate</ValidateOSImageFolderName>
  </MDT>
  <HyperV>
   <StartUpRAM>4</StartUpRAM>

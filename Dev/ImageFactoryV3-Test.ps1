@@ -1,13 +1,17 @@
 <#
 .Synopsis
-    ImageFactory 3.1
+    ImageFactory 3.2
 .DESCRIPTION
-    ImageFactory 3.1
+    ImageFactory 3.2
 .EXAMPLE
-    ImageFactoryV3-Build.ps1
+    ImageFactoryV3-Test.ps1
 .NOTES
     Created:	 2016-11-24
     Version:	 3.1
+
+    Updated:	 2017-02-23
+    Version:	 3.2
+
 
     Author - Mikael Nystrom
     Twitter: @mikael_nystrom
@@ -15,7 +19,7 @@
 
     Disclaimer:
     This script is provided 'AS IS' with no warranties, confers no rights and 
-    is not supported by the authors or Deployment Artist.
+    is not supported by the author.
 
     This script uses the PsIni module:
     Blog		: http://oliver.lipkau.net/blog/ 
@@ -27,6 +31,13 @@
 #>
 [cmdletbinding(SupportsShouldProcess=$True)]
 Param(
+    [parameter(mandatory=$false)] 
+    [ValidateSet($True,$False)] 
+    $UpdateBootImage = $False,
+
+    [parameter(mandatory=$false)] 
+    [ValidateSet($True,$False)] 
+    $EnableMDTMonitoring = $True
 )
 
 #Set start time
@@ -110,7 +121,7 @@ Function Test-VIAHypervConnection
     } -ArgumentList $VMSwitchName
     Return $True
 }
-Function Global:Update-Log
+Function Update-Log
 {
     Param(
     [Parameter(
@@ -167,9 +178,14 @@ Update-Log -Data "Imagefactory 3.2 (Hyper-V)"
 Update-Log -Data "Logfile is $Log"
 Update-Log -Data "XMLfile is $XMLfile"
 
+if($TestMode -eq $True){
+    Update-Log -Data "Testmode is now $TestMode"
+}
+
 #Importing modules
 Update-Log -Data "Importing modules"
 Import-Module 'C:\Program Files\Microsoft Deployment Toolkit\Bin\MicrosoftDeploymentToolkit.psd1' -ErrorAction Stop -WarningAction Stop
+Import-Module C:\Setup\PsIni\PsIni.psm1 -ErrorAction Stop -WarningAction Stop
 
 #Read Settings from XML
 Update-Log -Data "Reading from $XMLFile"
@@ -192,6 +208,26 @@ if((Test-Path -Path MDT:) -eq $false){
 Update-Log -Data "Get MDT Settings"
 $MDTSettings = Get-ItemProperty MDT:
 
+#Check if we should update the boot image
+Update-Log -Data "Check if we should update the boot image"
+If($UpdateBootImage -eq $True){
+    #Update boot image
+    Update-Log -Data "Updating boot image, please wait"
+    Update-MDTDeploymentShare -Path MDT: -ErrorAction Stop
+}
+
+#Check if we should use MDTmonitoring
+Update-Log -Data "Check if we should use MDTmonitoring"
+If($EnableMDTMonitoring -eq $True){
+    Update-Log -Data "Using MDT monitoring"
+    $MDTServer = $env:COMPUTERNAME
+}
+
+#Verify access to boot image
+Update-Log -Data "Verify access to boot image"
+$MDTImage = $($Settings.Settings.MDT.DeploymentShare) + "\boot\" + $($MDTSettings.'Boot.x86.LiteTouchISOName')
+if((Test-Path -Path $MDTImage) -eq $true){Update-Log -Data "Access to $MDTImage is ok"}else{Write-Warning "Could not access $MDTImage";BREAK}
+
 #Get TaskSequences
 Update-Log -Data "Get TaskSequences"
 $RefTaskSequenceIDs = (Get-VIARefTaskSequence -RefTaskSequenceFolder "MDT:\Task Sequences\$($Settings.Settings.MDT.RefTaskSequenceFolderName)" | where Enabled -EQ $true).TasksequenceID
@@ -209,25 +245,24 @@ foreach($obj in ($Result | Select-Object TaskSequenceID,Name,Version)){
     Update-Log -Data $data
 }
 
-$Result | Select-Object *
-
-
-#Show the WIMfiles:
-Update-Log -Data "Show the WIM's"
-Foreach($Ref in $RefTaskSequenceIDs){
-    $FullRefPath = $(("$Root\Captures\$ref") + ".wim")
-    if((Test-Path -Path $FullRefPath) -eq $true){
-        $Item = Get-Item -Path $FullRefPath
-        Update-Log -Data "WIM: $($Item.FullName)"
-    }else{
-        Update-Log -Data "Could not find $FullRefPath, something wnet wrong" -Class Warning 
-    }
-}
-
 #Verify Connection to Hyper-V host
 Update-Log -Data "Verify Connection to Hyper-V host"
 $Result = Test-VIAHypervConnection -Computername $Settings.Settings.HyperV.Computername -ISOFolder $Settings.Settings.HyperV.ISOLocation -VMFolder $Settings.Settings.HyperV.VMLocation -VMSwitchName $Settings.Settings.HyperV.SwitchName
 If($Result -ne $true){Update-Log -Data "$($Settings.Settings.HyperV.Computername) is not ready, will break";break}
+
+#Upload boot image to Hyper-V host
+Update-Log -Data "Upload boot image to Hyper-V host"
+$DestinationFolder = "\\" + $($Settings.Settings.HyperV.Computername) + "\" + $($Settings.Settings.HyperV.ISOLocation -replace ":","$")
+Copy-Item -Path $MDTImage -Destination $DestinationFolder -Force
+
+#Remove old WIM files in the capture folder
+Update-Log -Data "Remove old WIM files in the capture folder"
+Foreach($Ref in $RefTaskSequenceIDs){
+    $FullRefPath = $(("$Root\Captures\$ref") + ".wim")
+    if((Test-Path -Path $FullRefPath) -eq $true){
+        Remove-Item -Path $FullRefPath -Force -ErrorAction Stop
+        }
+}
 
 #Create the VM's on Host
 Update-Log -Data "Create the VM's on Host"
@@ -259,6 +294,10 @@ Foreach($Ref in $RefTaskSequenceIDs){
     #Create VM 
     $VM = New-VM -Name $VMName -MemoryStartupBytes $VMMemory -Path $VMPath -NoVHD -Generation 1
     Write-Verbose "$($VM.Name) is created"
+
+    #Disable dynamic memory 
+    Set-VMMemory -VM $VM -DynamicMemoryEnabled $false
+    Write-Verbose "Dynamic memory is disabled on $($VM.Name)"
 
     #Connect to VMSwitch 
     Connect-VMNetworkAdapter -VMNetworkAdapter (Get-VMNetworkAdapter -VM $VM) -SwitchName $VMSwitch
@@ -295,13 +334,64 @@ Foreach($Ref in $RefTaskSequenceIDs){
     } -ArgumentList $VMName,$VMMemory,$VMPath,$VMBootimage,$VMVHDSize,$VMVlanID,$VMVCPU,$VMSwitch
 }
 
+#Get BIOS Serialnumber from each VM and update the customsettings.ini file
+Update-Log -Data "Get BIOS Serialnumber from each VM and update the customsettings.ini file"
+$BIOSSerialNumbers = @{}
+Foreach($Ref in $RefTaskSequenceIDs){
+
+    #Get BIOS Serailnumber from the VM
+    $BIOSSerialNumber = Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
+        Param(
+        $VMName
+        )
+        $VMObject = Get-WmiObject -Namespace root\virtualization\v2 -Class Msvm_ComputerSystem -Filter "ElementName = '$VMName'"
+        $VMObject.GetRelated('Msvm_VirtualSystemSettingData').BIOSSerialNumber
+    } -ArgumentList $Ref
+    
+    #Store serialnumber for the cleanup process
+    $BIOSSerialNumbers.Add("$Ref","$BIOSSerialNumber")
+    
+    #Update CustomSettings.ini
+
+    $IniFile = "$($Settings.settings.MDT.DeploymentShare)\Control\CustomSettings.ini"
+    $CustomSettings = Get-IniContent -FilePath $IniFile -CommentChar ";"
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"OSDComputerName"="$Ref"}
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"TaskSequenceID"="$Ref"}
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"BackupFile"="$Ref.wim"}
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"SkipTaskSequence"="YES"}
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"SkipApplications"="YES"}
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"SkipCapture"="YES"}
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+
+    if($TestMode -eq $True){
+        $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"DoCapture"="NO"}
+        Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+    }
+    else{
+        $CSIniUpdate = Set-IniContent -FilePath $IniFile -Sections "$BIOSSerialNumber" -NameValuePairs @{"DoCapture"="YES"}
+        Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
+    }
+}
+
 #Start VM's on Host
 Update-Log -Data "Start VM's on Host"
-Update-Log -Data "ConcurrentRunningVMs is set to: $ConcurrentRunningVMs"
+Update-Log -Data "ConcurrentRunningVMs is set to: $($Settings.Settings.ConcurrentRunningVMs)"
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
     Param(
         $ConcurrentRunningVMs,
-        $MDTServer = ""
+        $MDTServer = "",
+        $EnableMDTMonitoring
     ) 
     #Import Function
     Function Get-MDTOData{
@@ -359,21 +449,21 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
     }
 
     #Get the VMs as Objects
-    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE"
+    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*"
     foreach($RefVM in $RefVMs){
         Write-Verbose "REFVM $($RefVM.Name) is deployed on $($RefVM.ComputerName) at $($refvm.ConfigurationLocation)"
     }
 
     #Get the VMs as Objects
-    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE"
+    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*"
     foreach($RefVM in $RefVMs){
     $StartedVM = Start-VM -VMName $RefVM.Name
     Write-Verbose "Starting $($StartedVM.name)"
     Do
         {
-            $RunningVMs = $((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running))
+            $RunningVMs = $((Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" | Where-Object -Property State -EQ -Value Running))
             foreach($RunningVM in $RunningVMs){
-                if($MDTServer -eq ""){
+                if($EnableMDTMonitoring -eq $false){
                     Write-Output "Currently running VM's : $($RunningVMs.Name) at $(Get-Date)"
                 }
                 else{
@@ -382,15 +472,16 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
             }
             Start-Sleep -Seconds "30"
         }
-    While((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running).Count -gt ($ConcurrentRunningVMs - 1))
+    While((Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" | Where-Object -Property State -EQ -Value Running).Count -gt ($ConcurrentRunningVMs - 1))
     }
-} -ArgumentList $($Settings.Settings.ConcurrentRunningVMs),$env:COMPUTERNAME
+} -ArgumentList $($Settings.Settings.ConcurrentRunningVMs),$env:COMPUTERNAME,$EnableMDTMonitoring
 
 #Wait until they are done
 Update-Log -Data "Wait until they are done"
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
     Param(
-    $MDTServer = ""
+    $MDTServer = "",
+    $EnableMDTMonitoring
     )
     #Import Function
     Function Get-MDTOData{
@@ -447,9 +538,9 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
         }
     }
     Do{
-        $RunningVMs = $((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running))
+        $RunningVMs = $((Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" | Where-Object -Property State -EQ -Value Running))
             foreach($RunningVM in $RunningVMs){
-                if($MDTServer -eq ""){
+                if($EnableMDTMonitoring -eq $false){
                     Write-Output "Currently running VM's : $($RunningVMs.Name) at $(Get-Date)"
                 }
                 else{
@@ -457,19 +548,30 @@ Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBl
                 }
             }
             Start-Sleep -Seconds "30"
-    }until((Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" | Where-Object -Property State -EQ -Value Running).count -eq '0')
-} -ArgumentList $MDTServer
+    }until((Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" | Where-Object -Property State -EQ -Value Running).count -eq '0')
+} -ArgumentList $MDTServer,$EnableMDTMonitoring
+
+if($TestMode -eq $True){
+    #Read-Host -Prompt "Press any key when testing is done, the VM's will be deleted..."
+}
 
 #Cleanup VMs
 Update-Log -Data "Cleanup VMs"
 Invoke-Command -ComputerName $($Settings.Settings.HyperV.Computername) -ScriptBlock {
-    $RefVMs = Get-VM | Where-Object -Property Notes -EQ -Value "REFIMAGE" 
+    $RefVMs = Get-VM | Where-Object -Property Notes -Like -Value "REFIMAGE*" 
     Foreach($RefVM in $RefVMs){
         $VM = Get-VM -VMName $RefVM.Name
         Write-Verbose "Deleting $($VM.Name) on $($VM.Computername) at $($VM.ConfigurationLocation)"
         Remove-VM -VM $VM -Force
         Remove-Item -Path $VM.ConfigurationLocation -Recurse -Force
     }
+}
+
+#Update CustomSettings.ini
+Update-Log -Data "Update CustomSettings.ini"
+Foreach($Obj in $BIOSSerialNumbers.Values){
+    $CSIniUpdate = Remove-IniEntry -FilePath $IniFile -Sections $Obj
+    Out-IniFile -FilePath $IniFile -Force -Encoding ASCII -InputObject $CSIniUpdate
 }
 
 #Cleanup MDT Monitoring data
@@ -480,10 +582,20 @@ if($EnableMDTMonitoring -eq $True){
     }
 }
 
-
+if(!($TestMode -eq $True)){
+    #Show the WIMfiles:
+    Update-Log -Data "Show the WIM's"
+    Foreach($Ref in $RefTaskSequenceIDs){
+        $FullRefPath = $(("$Root\Captures\$ref") + ".wim")
+        if((Test-Path -Path $FullRefPath) -eq $true){
+            $Item = Get-Item -Path $FullRefPath
+            Update-Log -Data "WIM: $($Item.FullName)"
+        }else{
+            Update-Log -Data "Could not find $FullRefPath, something went wrong, sorry" -Class Warning 
+        }
+    }
+}
 
 #Final update
 $Endtime = Get-Date
 Update-Log -Data "The script took $(($Endtime - $StartTime).Days):Days $(($Endtime - $StartTime).Hours):Hours $(($Endtime - $StartTime).Minutes):Minutes to complete."
-
-
